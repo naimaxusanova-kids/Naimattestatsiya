@@ -89,7 +89,7 @@ table.g caption{text-align:left;font-weight:600;color:var(--navy);margin-bottom:
 table.g th,table.g td{border:1px solid var(--line);padding:6px 8px;text-align:left}
 table.g th{background:var(--paper)}
 .tablewrap{overflow-x:auto}
-.q{font-size:17px;font-weight:500;margin:0 0 14px}
+.q{font-size:17px;font-weight:500;margin:0 0 14px;white-space:pre-line}
 .opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;color:var(--ink)}
 .opt .l{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;border:1.5px solid var(--line);color:var(--muted);font-size:14px}
 .opt.sel{border-color:var(--navy);background:color-mix(in srgb,var(--navy) 7%,var(--card))}
@@ -244,7 +244,7 @@ footer b{color:var(--gold)}
 const CONFIG = {
   API_URL: "https://attestatsiya.naimaxusanova1988.workers.dev", // Cloudflare Worker manzili
   CHANNEL: "kelajakkabirqadam_1",                                    // kanal (@ belgisisiz)
-  BOT_APP_LINK: "https://t.me/YOUR_BOT/attestatsiya",                // bot Mini App havolasi
+  BOT_APP_LINK: "https://t.me/Naimattestatsiya_bot",                 // bot Mini App havolasi
   CHECK_EVERY_MIN: 3                                                 // test davomida a’zolikni tekshirish oralig‘i
 };
 
@@ -268,12 +268,20 @@ if (tg) { try { tg.ready(); tg.expand(); if (tg.colorScheme) document.documentEl
 /* ===================== SERVER BILAN ALOQA ===================== */
 async function api(path, extra = {}) {
   if (DEMO) return demoApi(path, extra);
-  const r = await fetch(CONFIG.API_URL + path, {
-    method: "POST", headers: {"content-type": "application/json"},
-    body: JSON.stringify({ initData: tg ? tg.initData : "", ...extra })
-  });
-  let d = {}; try { d = await r.json(); } catch(e){ d = { ok:false, xato:"Server javob bermadi" }; }
-  return d;
+  if (/YOUR-SUBDOMAIN|ATTESTATSIYA-WORKER/.test(CONFIG.API_URL))
+    return { ok:false, xato:"index.html ichidagi API_URL hali to‘ldirilmagan. U yerga Cloudflare Worker manzilini yozing." };
+  const ctrl = new AbortController(); const tm = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const r = await fetch(CONFIG.API_URL.replace(/\/+$/, "") + path, {
+      method: "POST", headers: {"content-type": "application/json"}, signal: ctrl.signal,
+      body: JSON.stringify({ initData: tg ? tg.initData : "", ...extra })
+    });
+    let d; try { d = await r.json(); } catch(e){ d = { ok:false, xato:"Server noto‘g‘ri javob qaytardi (holat " + r.status + "). Worker kodi to‘liq joylanganini tekshiring." }; }
+    return d;
+  } catch (e) {
+    return { ok:false, xato: e.name === "AbortError" ? "Server 20 soniya ichida javob bermadi." :
+      "Serverga ulanib bo‘lmadi: " + CONFIG.API_URL + " manzilini tekshiring." };
+  } finally { clearTimeout(tm); }
 }
 
 /* ===================== KIRISH: A’ZOLIK ===================== */
